@@ -53,10 +53,9 @@ class TlsConnectionEmail():
 
     def email(self):
         """ Send the email(s) using secure connection """
-        with smtplib.SMTP_SSL(self.smtp_server, self.port, context=self.context) as server:
-            server.login(self.sender_email, self.password)
-
-            for _, receiver in self.receivers.iterrows():
+        for _, receiver in self.receivers.iterrows():
+            with smtplib.SMTP_SSL(self.smtp_server, self.port, context=self.context) as server:
+                server.login(self.sender_email, self.password)
                 name, email = receiver['First Name'], receiver['Email Address']
                 server.sendmail(self.sender_email, email, self.format_message(name, email).as_string())
 

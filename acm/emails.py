@@ -68,34 +68,45 @@ class TlsConnectionEmail():
 
     def email(self):
         """ Send the email(s) using secure connection """
-        with smtplib.SMTP_SSL(self.smtp_server, self.port, context=self.context) as server:
-            server.login(self.sender_email, self.password)
+        for _, receiver in self.receivers.iterrows():
+            with smtplib.SMTP_SSL(self.smtp_server, self.port, context=self.context) as server:
+                server.login(self.sender_email, self.password)
+                name, receiver_email = receiver['First Name'], receiver['Email Address']
 
-            for _, receiver in self.receivers.iterrows():
-                name, email = receiver['First Name'], receiver['Email Address']
+                print(f"Sending to {receiver['First Name']}, {receiver['Email Address']}")
+                server.sendmail(self.sender_email, receiver_email, self.format_message(name, receiver_email).as_string())
+                print(f"Sent to {receiver['First Name']}, {receiver['Email Address']}\n")
+                if _ % 50 == 0:
+                    print(f"\n\n\n======================================= Sent {_} Emails =======================================\n\n\n")
 
-                print(f"sending to {receiver['First Name']}, {receiver['Email Address']}")
-                server.sendmail(self.sender_email, "jmyeh51@gmail.com", self.format_message(name, email).as_string())
-                print(f"sent to {receiver['First Name']}, {receiver['Email Address']}")
+        print("Done")
 
-
-if __name__=='__main__':
-    sender = "lmuacm0@gmail.com"
-    subject = "Testing lmuacm gmail"
-
-    df = pd.read_excel('./Senior_Project_Invitees.xlsx')
+def preprocess(spreadsheet):
+    """
+    Preprocessing script based off Axel Browne's: https://github.com/axelbrowne/email-bot
+    """
+    df = pd.read_excel(spreadsheet)
     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
 
     rows_to_drop = []
     for index, row in df.iterrows():
         try:
-            if df["UG"][index] >= 2022 or not df["Email Address"][index]:
+            if row["UG"] >= 2022 or not row["Email Address"]:
                 rows_to_drop.append(index)
         except Exception as e:
             rows_to_drop.append(index)
             continue
 
     df.drop(labels=rows_to_drop, axis=0, inplace=True)
-    df.drop(columns=["UG", "Last Name"], inplace=True)
+
+    return df
+
+
+if __name__=='__main__':
+    sender = "lmuacm0@gmail.com"
+    subject = "LMU ACM Alumnight"
+
+    df = preprocess('./Senior_Project_Invitees.xlsx')
+    # print(df)
 
     tls = TlsConnectionEmail(sender, df, subject).email()
