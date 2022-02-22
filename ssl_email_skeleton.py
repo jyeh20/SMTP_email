@@ -7,44 +7,34 @@ Much of this code followed the tutorial found at https://realpython.com/python-s
 import smtplib, ssl, getpass
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import pandas as pd
 
-class Server:
-    def __init__(self, sender_email, receiver_emails, subject, smtp_server="smtp.gmail.com"):
+class TlsConnectionEmail():
+    def __init__(self, sender_email, receivers, subject, port=465, smtp_server="smtp.gmail.com"):
         self.sender_email = sender_email
-        self.receiver_emails = receiver_emails
+        self.receivers = receivers
         self.subject = subject
         self.smtp_server = smtp_server
         self.password = getpass.getpass(prompt="Password: ")
         self.context = ssl.create_default_context()
-
-    def format_message(self):
-        pass
-
-    def email(self):
-        pass
-
-class TlsConnectionEmail(Server):
-    def __init__(self, sender_email, receiver_emails, subject, port=465):
-        super().__init__(sender_email, receiver_emails, subject)
         self.port = port
 
-    def format_message(self, receiver):
-        """ Put your message here in both plain text and HTML """
+    def format_message(self, receiver_name, receiver_email):
+        """ Format your message here in both plain text and HTML"""
         message = MIMEMultipart("alternative")
         message["Subject"] = self.subject
         message["From"] = self.sender_email
-        message["To"] = receiver
+        message["To"] = receiver_email
 
-        text = """\
-        Hi,
+        text = f"""\
+        Hi {receiver_name},
         How are you?
         Real Python has many great tutorials:
         www.realpython.com"""
-
-        html = """\
+        html = f"""\
         <html>
         <body>
-            <p>Hi,<br>
+            <p>Hi {receiver_name},<br>
             How are you?<br>
             <a href="http://www.realpython.com">Real Python</a>
             has many great tutorials.
@@ -63,14 +53,18 @@ class TlsConnectionEmail(Server):
 
     def email(self):
         """ Send the email(s) using secure connection """
-        for receiver in self.receiver_emails:
-            with smtplib.SMTP_SSL(self.smtp_server, self.port, context=self.context) as server:
-                server.login(self.sender_email, self.password)
-                server.sendmail(self.sender_email, receiver, self.format_message(receiver).as_string())
+        with smtplib.SMTP_SSL(self.smtp_server, self.port, context=self.context) as server:
+            server.login(self.sender_email, self.password)
+
+            for _, receiver in self.receivers.iterrows():
+                name, email = receiver['First Name'], receiver['Email Address']
+                server.sendmail(self.sender_email, email, self.format_message(name, email).as_string())
+
 
 if __name__=='__main__':
     sender = "x@gmail.com"
-    receivers = ["test@gmail.com", "test2@gmail.com", "test3@gmail.com"]
-    subject = "test email skeleton"
+    subject = "Testing Jonathan's Email bot"
 
-    tls = TlsConnectionEmail(sender, receivers, subject).email()
+    df = pd.read_excel('./sample.xlsx')
+
+    tls = TlsConnectionEmail(sender, df, subject).email()
